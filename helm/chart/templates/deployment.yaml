@@ -1,0 +1,75 @@
+#@formatter:off
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: {{ include "{{ .Chart.Name }}.fullname" . }}
+{{ include "{{ .Chart.Name }}.labels" . | indent 2 }}
+spec:
+  replicas: {{ .Values.deployment.replicas }}
+  strategy:
+{{ toYaml .Values.deployment.strategy | indent 4 }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ .Chart.Name }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ .Chart.Name }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmaps.yaml") . | sha256sum }}
+    spec:
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+      dnsPolicy: ClusterFirst
+      affinity:
+{{ toYaml .Values.deployment.affinity | indent 8 }}
+      nodeSelector:
+{{ toYaml .Values.deployment.nodeSelector | indent 8 }}
+      tolerations:
+{{ toYaml .Values.deployment.tolerations | indent 8 }}
+      containers:
+      - name: {{ include "{{ .Chart.Name }}.fullname" . }}
+        image: {{ .Values.image }}
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          httpGet:
+            path: /liveness
+            port: {{ include "{{ .Chart.Name }}.port" . }}
+          failureThreshold: 3
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          successThreshold: 1
+          timeoutSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /readiness
+            port: {{ include "{{ .Chart.Name }}.port" . }}
+          failureThreshold: 3
+          initialDelaySeconds: 15
+          periodSeconds: 10
+          timeoutSeconds: 1
+          successThreshold: 1
+        ports:
+        - name: web
+          containerPort: {{ include "{{ .Chart.Name }}.port" . }}
+          protocol: TCP
+        env:
+{{- if .Values.dev }}
+        - name: JAVA_OPTS
+          value: -server -Xss256k -Xms1024m -Xmx1024m -XX:ParallelGCThreads=1 -XX:+PerfDisableSharedMem -XX:+UseParallelOldGC -XX:CICompilerCount=2 -XX:NativeMemoryTracking=summary -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/tmp/heapdump.bin -agentlib:jdwp=transport=dt_socket,server=y,address=8000,suspend=n -Dcom.sun.management.jmxremote.port=31084 -Dcom.sun.management.jmxremote.local.only=false -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Dcom.sun.management.jmxremote.rmi.port=31084 -Djava.rmi.server.hostname=localhost
+{{- else }}
+        - name: JAVA_OPTS
+          value: -server -Xss256k -Xms1024m -Xmx1024m -XX:ParallelGCThreads=1 -XX:+PerfDisableSharedMem -XX:+UseParallelOldGC -XX:CICompilerCount=2 -XX:NativeMemoryTracking=summary -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/tmp/heapdump.bin -Dcom.sun.management.jmxremote.port=31084 -Dcom.sun.management.jmxremote.local.only=false -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Dcom.sun.management.jmxremote.rmi.port=31084 -Djava.rmi.server.hostname=localhost
+{{- end }}
+        resources:
+{{ toYaml .Values.deployment.resources | indent 10 }}
+        volumeMounts:
+        - name: configmap
+          mountPath: /app/etc/kafkatwitter
+      volumes:
+      - name: configmap
+        configMap:
+          name: {{ include "{{ .Chart.Name }}.fullname" . }}

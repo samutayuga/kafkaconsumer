@@ -1,0 +1,29 @@
+#@formatter:off
+kind: Service
+apiVersion: v1
+metadata:
+  name: {{ include "{{ .Chart.Name }}.fullname" . }}
+{{ include "{{ .Chart.Name }}.labels" . | indent 2 }}
+spec:
+  sessionAffinity: None
+  type: {{ .Values.service.type }}
+  selector:
+    app.kubernetes.io/name: {{ .Chart.Name }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+  ports:
+  - name: http
+    protocol: TCP
+    port: {{ include "{{ .Chart.Name }}.port" . }}
+    targetPort: {{ include "{{ .Chart.Name }}.port" . }}
+{{- if contains "NodePort" .Values.service.type }}
+    nodePort: {{ .Values.service.ports.http_port }}
+{{- end }}
+{{- if .Values.dev }}
+  - name: remote-debug
+    protocol: TCP
+    port: 8000
+    targetPort: 8000
+{{- if contains "NodePort" .Values.service.type }}
+    nodePort: {{ .Values.service.ports.debug_port }}
+{{- end }}
+{{- end }}

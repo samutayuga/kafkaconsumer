@@ -80,7 +80,7 @@ case "`uname`" in
     ;;
 esac
 
-CLASSPATH=$APP_LIB/kafka-twitter-fat.jar
+CLASSPATH=$APP_LIB/kafkaconsumer-fat.jar
 
 
 # Determine the Java command to use to start the JVM.
@@ -180,6 +180,6 @@ save () {
 APP_ARGS=`save "$@"`
 
 # Collect all arguments for the java command, following the shell quoting and substitution rules
-eval set -- $DEFAULT_JVM_OPTS $JAVA_OPTS $ATMPOC_OPTS -classpath "\"$CLASSPATH\"" com.samutup.explore.TweetyMaster "$APP_ARGS"
+eval set -- $DEFAULT_JVM_OPTS $JAVA_OPTS $ATMPOC_OPTS -classpath "\"$CLASSPATH\"" com.samutup.kafka.KafkaConsumerMaster "$APP_ARGS"
 
 exec "$JAVACMD" "$@"

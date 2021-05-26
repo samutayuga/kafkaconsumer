@@ -14,6 +14,7 @@ import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.http.HttpServer;
+import io.vertx.core.http.RequestOptions;
 import io.vertx.core.impl.logging.Logger;
 import io.vertx.core.impl.logging.LoggerFactory;
 import io.vertx.core.json.Json;
@@ -25,51 +26,48 @@ import io.vertx.ext.web.client.HttpResponse;
 import io.vertx.ext.web.client.WebClient;
 import io.vertx.ext.web.handler.BodyHandler;
 import io.vertx.kafka.client.consumer.KafkaConsumer;
-import io.vertx.kafka.client.consumer.KafkaConsumerRecord;
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.function.Consumer;
+import org.apache.kafka.clients.producer.ProducerConfig;
 
 public class KafkaConsumerVerticle extends AbstractVerticle {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(KafkaConsumerVerticle.class);
-  static Consumer<KafkaConsumerRecord<String, String>> recordConsumer = consumerRecord -> LOGGER
-      .info(
-          "processing key=" + consumerRecord.key() + " value=" + consumerRecord.value()
-              + " partition=" + consumerRecord.partition()
-              + " offset=" + consumerRecord.offset());
 
-  static KafkaConsumer<String, String> kafkaConsumerBuilder(String bootstrap, String group,
-      Vertx vertx) {
+  static KafkaConsumer<String, String> kafkaConsumerBuilder(
+      Vertx vertx, TweetySetting tweetySetting) {
     Map<String, String> config = new HashMap<>();
-    config.put("bootstrap.servers", bootstrap);
+    String bootstrap = String
+        .format("%s:%s", tweetySetting.getBrokerHost(), tweetySetting.getBrokerPort());
+    config.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrap);
     config.put("key.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
     config.put("value.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
-    config.put("group.id", group);
+    config.put("group.id", tweetySetting.getConsumerGroup());
     config.put("auto.offset.reset", "earliest");
     config.put("enable.auto.commit", "false");
     return KafkaConsumer.create(vertx, config);
   }
 
-  @FunctionalInterface
-  interface Transform<R, T, C> {
+  Handler<HttpResponse<Buffer>> httpResponseHandler = bufferHttpResponse -> LOGGER
+      .info(bufferHttpResponse.bodyAsString());
+  Handler<Throwable> throwableHandler = throwable -> LOGGER.error("error", throwable);
 
-    C apply(R clientBuilder, T t);
+  private void consumeTopic(HttpRequest<Buffer> bufferHttpRequest,
+      KafkaConsumer<String, String> consumer) {
+    new Thread(() -> {
+      while (true) {
+        consumer.poll(Duration.ofMillis(100))
+            .onSuccess(records -> records.records()
+                .forEach(p -> bufferHttpRequest.sendJson(Json.decodeValue(p.value()))
+                    .onSuccess(httpResponseHandler)
+                    .onFailure(throwableHandler)))
+            .onFailure(throwable -> LOGGER.error("Failed processing", throwable));
+      }
+    }).start();
+
+
   }
-
-  private Handler<RoutingContext> contextHandler = rc -> {
-
-    if (HttpMethod.DELETE.equals(rc.request().method())) {
-      rc.response().setStatusCode(HttpResponseStatus.OK.code()).end();
-    } else if (HttpMethod.POST.equals(rc.request().method())) {
-      //get elastic search
-
-      rc.response().setStatusCode(HttpResponseStatus.CREATED.code()).end();
-    } else {
-      rc.response().setStatusCode(HttpResponseStatus.BAD_REQUEST.code()).end();
-    }
-
-  };
 
   private static Handler<RoutingContext> handleAdminRequest(
       WebClient webClient, TweetySetting tweetySetting) {
@@ -92,8 +90,9 @@ public class KafkaConsumerVerticle extends AbstractVerticle {
                 .inetSocketAddress(tweetySetting.getElasticPort(), tweetySetting.getElasticHost()),
             rc.request().uri());
         Future<HttpResponse<Buffer>> responseFuture = httpRequest.send();
-        responseFuture.onSuccess(res -> rc.response().putHeader("Content-Type","application/json").setStatusCode(res.statusCode()).end(res.bodyAsString()))
-            .onFailure(res->rc.response().setStatusCode(500).end(res.getMessage()));
+        responseFuture.onSuccess(res -> rc.response().putHeader("Content-Type", "application/json")
+            .setStatusCode(res.statusCode()).end(res.bodyAsString()))
+            .onFailure(res -> rc.response().setStatusCode(500).end(res.getMessage()));
       } else {
         rc.response().setStatusCode(HttpResponseStatus.BAD_REQUEST.code()).end();
       }
@@ -107,6 +106,12 @@ public class KafkaConsumerVerticle extends AbstractVerticle {
     Router router = Router.router(vertx);
     try {
       TweetySetting tweetySetting = config().mapTo(TweetySetting.class);
+      RequestOptions requestOptions = new RequestOptions().setHost(tweetySetting.getElasticHost())
+          .setPort(tweetySetting.getElasticPort())
+          .setURI(String.format("%s%s", tweetySetting.getIndice(), tweetySetting.getIndiceType()));
+      HttpRequest<Buffer> elasticPutMessage = WebClient.create(vertx)
+          .request(HttpMethod.POST, requestOptions);
+
       WebClient webClient = WebClient.create(vertx);
       LOGGER.info("retrieve settings from yaml " + tweetySetting);
       int portNumber = tweetySetting.getPort();
@@ -119,10 +124,14 @@ public class KafkaConsumerVerticle extends AbstractVerticle {
           .registerReadinessCheck(router, new AppCheckHandler[]{serverStartupListenHandler});
       LifenessReadinessCheck.registerLivenessCheck(router, null);
       //call kafka
+      KafkaConsumer<String, String> consumer = kafkaConsumerBuilder(vertx, tweetySetting);
+      consumer.subscribe(tweetySetting.getTopicName());
+      consumeTopic(elasticPutMessage, consumer);
 
       // create server
       HttpServer server = vertx.createHttpServer();
       // tweetListener.listen(kafkaProducer, tweetySetting.getTopicName());
+
       router.route().handler(BodyHandler.create())
           .handler(handleAdminRequest(webClient, tweetySetting));
       server.requestHandler(router).listen(portNumber, serverStartupListenHandler);

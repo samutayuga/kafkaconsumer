@@ -6,7 +6,7 @@
 
   <groupId>groupId</groupId>
   <artifactId>kafkaconsumer</artifactId>
-  <version>1.0-SNAPSHOT</version>
+  <version>1.0.0</version>
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
@@ -24,7 +24,7 @@
     <jackson-version>2.11.3</jackson-version>
     <log4j-version>2.14.1</log4j-version>
     <logback-version>1.2.3</logback-version>
-    <launcher.class>com.samutup.explore.TweetyMaster</launcher.class>
+    <launcher.class>com.samutup.kafka.KafkaConsumerMaster</launcher.class>
   </properties>
 
   <dependencyManagement>
@@ -252,7 +252,7 @@
           </execution>
         </executions>
         <configuration>
-          <repository>samutup/kafka-twitter</repository>
+          <repository>samutup/kafka-twitter-consumer</repository>
           <tag>${project.version}</tag>
         </configuration>
       </plugin>
