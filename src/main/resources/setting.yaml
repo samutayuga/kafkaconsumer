@@ -7,3 +7,4 @@ elastic_host: elasticsearch-master
 elastic_port: 9200
 indice: /tweet-kafka
 indice_type: /tweets
+rest_consume: /consume

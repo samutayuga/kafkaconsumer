@@ -26,4 +26,5 @@ apps:
   elastic_port: 9200
   indice: /tweet-kafka
   indice_type: /tweets
+  rest_consume: /consume
 image: samutup/kafka-twitter-consumer:1.0.0

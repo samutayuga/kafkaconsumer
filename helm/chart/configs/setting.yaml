@@ -7,3 +7,4 @@ elastic_host: {{ .Values.apps.elastic_host }}
 elastic_port: {{ .Values.apps.elastic_port }}
 indice: {{ .Values.apps.indice }}
 indice_type: {{ .Values.apps.indice_type }}
+rest_consume: {{ .Values.apps.rest_consume }}
