@@ -27,6 +27,7 @@ import io.vertx.kafka.client.consumer.KafkaConsumer;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
 
 public class KafkaConsumerVerticle extends AbstractVerticle {
@@ -39,28 +40,45 @@ public class KafkaConsumerVerticle extends AbstractVerticle {
     String bootstrap = String
         .format("%s:%s", tweetySetting.getBrokerHost(), tweetySetting.getBrokerPort());
     config.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrap);
-    config.put("key.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
-    config.put("value.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
-    config.put("group.id", tweetySetting.getConsumerGroup());
-    config.put("auto.offset.reset", "earliest");
-    config.put("enable.auto.commit", "false");
+    config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG,
+        "org.apache.kafka.common.serialization.StringDeserializer");
+    config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG,
+        "org.apache.kafka.common.serialization.StringDeserializer");
+    config.put(ConsumerConfig.GROUP_ID_CONFIG, tweetySetting.getConsumerGroup());
+    config.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+    config.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false");
+    config.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, "10");
     return KafkaConsumer.create(vertx, config);
   }
 
   static Handler<HttpResponse<Buffer>> httpResponseHandler = bufferHttpResponse -> LOGGER
-      .info(bufferHttpResponse.bodyAsString());
+      .info(Json.decodeValue(bufferHttpResponse.bodyAsString()));
   static Handler<Throwable> throwableHandler = throwable -> LOGGER.error("error", throwable);
 
+  private static String buildUriWithId(String jsonString, TweetySetting tweetySetting) {
+
+    TweetPayload tweetPayload = Json.decodeValue(jsonString, TweetPayload.class);
+    String strUri = String
+        .format("%s%s/%s", tweetySetting.getIndice(), tweetySetting.getIndiceType(),
+            tweetPayload.getId());
+    return strUri;
+  }
+
   private static void consumeTopic(HttpRequest<Buffer> bufferHttpRequest,
-      KafkaConsumer<String, String> consumer) {
+      KafkaConsumer<String, String> consumer, TweetySetting tweetySetting) {
     new Thread(() -> {
       while (true) {
         consumer.poll(Duration.ofMillis(100))
             .onSuccess(records -> records.records()
-                .forEach(p -> bufferHttpRequest.sendJson(Json.decodeValue(p.value()))
-                    .onSuccess(httpResponseHandler)
-                    .onFailure(throwableHandler)))
+                .forEach(p ->
+                    bufferHttpRequest.uri(buildUriWithId(p.value(), tweetySetting))
+                        .sendJson(Json.decodeValue(p.value()))
+                        .onSuccess(httpResponseHandler)
+                        .onFailure(throwableHandler)
+                ))
             .onFailure(throwable -> LOGGER.error("Failed processing", throwable));
+
+        consumer.commit().onSuccess(v -> LOGGER.info("offset is committed"));
       }
     }).start();
 
@@ -77,7 +95,7 @@ public class KafkaConsumerVerticle extends AbstractVerticle {
         //get elastic search
         KafkaConsumer<String, String> consumer = kafkaConsumerBuilder(rc.vertx(), tweetySetting);
         consumer.subscribe(tweetySetting.getTopicName());
-        consumeTopic(httpRequest, consumer);
+        consumeTopic(httpRequest, consumer, tweetySetting);
         rc.response().setStatusCode(HttpResponseStatus.CREATED.code()).end();
       } else if (HttpMethod.GET.equals(rc.request().method())) {
         /*HttpRequest<Buffer> httpRequest = webClient.request(HttpMethod.GET, SocketAddress
