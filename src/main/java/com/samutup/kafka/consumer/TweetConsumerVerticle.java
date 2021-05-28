@@ -7,14 +7,17 @@ import io.vertx.core.impl.logging.Logger;
 import io.vertx.core.impl.logging.LoggerFactory;
 import io.vertx.core.json.Json;
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 import org.apache.http.HttpHost;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.elasticsearch.action.bulk.BulkItemResponse;
 import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.bulk.BulkResponse;
 import org.elasticsearch.action.index.IndexRequest;
@@ -59,11 +62,16 @@ public class TweetConsumerVerticle extends AbstractVerticle {
                   }
                 }
             );
-        if (recordCount.get() == 10) {
+        if (recordCount.get() > 0) {
           BulkResponse bulkItemResponses = restHighLevelClient
               .bulk(bulkRequest, org.elasticsearch.client.RequestOptions.DEFAULT);
           consumer.commitSync();
           Thread.sleep(1000l);
+          LOGGER.info(
+              "Successfully processed tweets with ID:" + Arrays.stream(bulkItemResponses.getItems())
+                  .map(
+                      BulkItemResponse::getId)
+                  .collect(Collectors.joining(",")));
         }
 
       } catch (Exception ioException) {

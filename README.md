@@ -51,3 +51,32 @@ tweet_squad     tweety          2          0               920             920  
 and `CURRENT-OFFSET` is 0
 
 Restart the consumer
+
+# Controlling Consumer Liveliness
+
+![Consumer Liveliness](consumer_hearthbeat.png)
+
+* Consumers in a gruop talsk to a Consumer Groups Coordinator
+* To detect consumers that are down, there is `heartbeat` mechanism and a poll mechanism
+* To avoid issues, consumers are encouraged to process data fast and poll often
+
+# Consumer Heartbeat Thread
+
+* session.timeout.ms (default 10 seconds)
+> Hearthbeat are sent periodically to the broker
+> If no heartbeat is sent during that period, the consumer is considered dead
+> Set even lower to faster consumer rebalances
+
+* heartbeat.interval.ms (default 3 seconds)
+> How often to send heartbeats
+> Usually set to 1/3rd of session.timeout.ms
+
+* This mechanism is used to detect a consumer application being down
+
+# Consumer Poll Thread
+`max.poll.interval.ms` (default 5 minutes)
+
+* Maximum amount of time between two .poll() calls before declaring the consumer dead
+* This is particularly relevant for Big Data frameworks like Spark in case processing takes time
+* This is used to detect a data processing issue with the consumer
+
