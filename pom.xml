@@ -24,6 +24,8 @@
     <jackson-version>2.11.3</jackson-version>
     <log4j-version>2.14.1</log4j-version>
     <logback-version>1.2.3</logback-version>
+    <elastic-search.version>7.13.0</elastic-search.version>
+    <apache-http-client.version>4.5.13</apache-http-client.version>
     <launcher.class>com.samutup.kafka.KafkaConsumerMaster</launcher.class>
   </properties>
 
@@ -88,9 +90,19 @@
         <version>${vertx.version}</version>
       </dependency>
       <dependency>
+        <groupId>org.apache.httpcomponents</groupId>
+        <artifactId>httpclient</artifactId>
+        <version>${apache-http-client.version}</version>
+      </dependency>
+      <dependency>
         <groupId>ch.qos.logback</groupId>
         <artifactId>logback-classic</artifactId>
         <version>${logback-version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.elasticsearch.client</groupId>
+        <artifactId>elasticsearch-rest-high-level-client</artifactId>
+        <version>${elastic-search.version}</version>
       </dependency>
     </dependencies>
 
@@ -147,8 +159,16 @@
       <artifactId>log4j-core</artifactId>
     </dependency>
     <dependency>
+      <groupId>org.apache.httpcomponents</groupId>
+      <artifactId>httpclient</artifactId>
+    </dependency>
+    <dependency>
       <groupId>ch.qos.logback</groupId>
       <artifactId>logback-classic</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.elasticsearch.client</groupId>
+      <artifactId>elasticsearch-rest-high-level-client</artifactId>
     </dependency>
     <dependency>
       <groupId>org.junit.jupiter</groupId>

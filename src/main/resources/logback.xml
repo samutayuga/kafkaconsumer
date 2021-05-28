@@ -6,12 +6,12 @@
     </encoder>
   </appender>
 
-  <logger name="com.mchange.v2" level="debug"/>
-  <logger name="io.netty" level="debug"/>
-  <logger name="io.vertx" level="debug"/>
-  <logger name="com.samutup.explore" level="debug"/>
+  <logger name="com.mchange.v2" level="info"/>
+  <logger name="io.netty" level="info"/>
+  <logger name="io.vertx" level="info"/>
+  <logger name="com.samutup.kafka.consumer" level="info"/>
 
-  <root level="debug">
+  <root level="info">
     <appender-ref ref="STDOUT"/>
   </root>
 

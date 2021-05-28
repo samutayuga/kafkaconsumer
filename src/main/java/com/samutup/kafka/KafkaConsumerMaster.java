@@ -33,7 +33,7 @@ public class KafkaConsumerMaster {
     });
   }
 
-  private static void deploy(Vertx vertx, JsonObject config, String verticleName) {
+   public static void deploy(Vertx vertx, JsonObject config, String verticleName) {
     DeploymentOptions routerDeploymentOptions = new DeploymentOptions().setConfig(config);
     vertx.deployVerticle(verticleName, routerDeploymentOptions, result -> {
       if (result.succeeded()) {
