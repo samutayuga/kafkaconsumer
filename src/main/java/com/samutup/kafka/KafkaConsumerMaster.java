@@ -14,18 +14,21 @@ import io.vertx.core.logging.LoggerFactory;
 import java.util.concurrent.TimeUnit;
 
 public class KafkaConsumerMaster {
+
   private static final Logger LOGGER = LoggerFactory.getLogger(KafkaConsumerMaster.class);
 
   static {
     InternalLoggerFactory.setDefaultFactory(Log4J2LoggerFactory.INSTANCE);
   }
+
   public static void main(String[] args) {
-    Vertx vertx = Vertx.vertx(new VertxOptions().setMaxEventLoopExecuteTime(10).setBlockedThreadCheckIntervalUnit(
-        TimeUnit.SECONDS));
+    Vertx vertx = Vertx
+        .vertx(new VertxOptions().setMaxEventLoopExecuteTime(10).setBlockedThreadCheckIntervalUnit(
+            TimeUnit.SECONDS));
     ConfigRetriever.create(vertx, SettingLoader.getConfigRetrieverOptions()).getConfig(event -> {
       if (event.succeeded()) {
         //deploy verticle
-        deploy(vertx, event.result(), KafkaConsumerVerticle.class.getName());
+        deploy(vertx, event.result(), KafkaConsumerVerticle.class.getName(), false);
 
       } else {
         //deploy verticle
@@ -33,8 +36,9 @@ public class KafkaConsumerMaster {
     });
   }
 
-   public static void deploy(Vertx vertx, JsonObject config, String verticleName) {
-    DeploymentOptions routerDeploymentOptions = new DeploymentOptions().setConfig(config);
+  public static void deploy(Vertx vertx, JsonObject config, String verticleName, boolean isWorker) {
+    DeploymentOptions routerDeploymentOptions = new DeploymentOptions().setConfig(config)
+        .setWorker(isWorker);
     vertx.deployVerticle(verticleName, routerDeploymentOptions, result -> {
       if (result.succeeded()) {
         LOGGER.info("Successfully deploy the verticle");

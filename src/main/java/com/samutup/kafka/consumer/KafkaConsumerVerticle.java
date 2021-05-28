@@ -38,7 +38,8 @@ public class KafkaConsumerVerticle extends AbstractVerticle {
               if (event.succeeded()) {
                 //deploy verticle
                 KafkaConsumerMaster
-                    .deploy(rc.vertx(), event.result(), TweetConsumerVerticle.class.getName());
+                    .deploy(rc.vertx(), event.result(), TweetConsumerVerticle.class.getName(),
+                        true);
 
               } else {
                 //deploy verticle
