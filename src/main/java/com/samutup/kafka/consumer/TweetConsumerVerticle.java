@@ -30,8 +30,8 @@ public class TweetConsumerVerticle extends AbstractVerticle {
   private static String getTweetId(String jsonStr) {
     JsonElement twJsonObj = JsonParser.parseString(jsonStr);
     if (twJsonObj.isJsonObject()) {
-      if (twJsonObj.getAsJsonObject().has("id")) {
-        return twJsonObj.getAsJsonObject().get("id").getAsString();
+      if (twJsonObj.getAsJsonObject().has("id_str")) {
+        return twJsonObj.getAsJsonObject().get("id_str").getAsString();
       }
     } else {
       LOGGER.warn(jsonStr + " Is not a json string" + twJsonObj);
@@ -54,6 +54,7 @@ public class TweetConsumerVerticle extends AbstractVerticle {
                 bulkRequest.add(new IndexRequest()
                     .id(getTweetId(p.value()))
                     .index(tweetySetting.getIndice())
+                    .type(tweetySetting.getIndiceType())
                     .source(jString, XContentType.JSON));
               } catch (Exception anyEx) {
                 LOGGER.warn("error while processing " + jString, anyEx);
@@ -68,7 +69,7 @@ public class TweetConsumerVerticle extends AbstractVerticle {
           LOGGER.info(
               "Successfully processed tweets with ID:" + Arrays.stream(bulkItemResponses.getItems())
                   .map(
-                      BulkItemResponse::getId)
+                      it -> it.getIndex().concat(it.getType()).concat("/").concat(it.getId()))
                   .collect(Collectors.joining(",")));
         }
 
@@ -100,8 +101,6 @@ public class TweetConsumerVerticle extends AbstractVerticle {
   public void start(Promise<Void> startPromise) throws Exception {
     TweetySetting tweetySetting = config().mapTo(TweetySetting.class);
     LOGGER.info("retrieve settings from yaml " + tweetySetting);
-    String uri = String.format("%s%s", tweetySetting.getIndice(),
-        tweetySetting.getIndiceType());
     RestClientBuilder clientBuilder = RestClient.builder(
         new HttpHost(tweetySetting.getElasticHost(), tweetySetting.getElasticPort(), "http"));
     RestHighLevelClient restHighLevelClient = new RestHighLevelClient(clientBuilder);

@@ -93,3 +93,14 @@ This time, the consumer should be able to consume the message.
 * This is particularly relevant for Big Data frameworks like Spark in case processing takes time
 * This is used to detect a data processing issue with the consumer
 
+# Delete kafka messages from topic
+Make it invalid instead of deleting it, by setting the `retention.ms=1000`.
+The command is given as below,
+
+```shell
+kafka-topics --zookeeper 127.0.0.1:2181 --alter --topic tweety --config retention.ms=604800000
+```
+Once done, the consumer will not consume the existing messages
+
+
+
