@@ -1,21 +1,19 @@
 package com.samutup.kafka.consumer;
 
+import com.google.gson.JsonElement;
+import com.google.gson.JsonParser;
 import com.samutup.kafka.settings.TweetySetting;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Promise;
 import io.vertx.core.impl.logging.Logger;
 import io.vertx.core.impl.logging.LoggerFactory;
-import io.vertx.core.json.Json;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Map;
 import java.util.Properties;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import org.apache.http.HttpHost;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
-import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.elasticsearch.action.bulk.BulkItemResponse;
 import org.elasticsearch.action.bulk.BulkRequest;
@@ -30,10 +28,15 @@ public class TweetConsumerVerticle extends AbstractVerticle {
 
 
   private static String getTweetId(String jsonStr) {
-    Map<String, String> objectMap = Json.decodeValue(jsonStr, Map.class);
-    if ((objectMap != null) && objectMap.containsKey("id")) {
-      return objectMap.get("id");
+    JsonElement twJsonObj = JsonParser.parseString(jsonStr);
+    if (twJsonObj.isJsonObject()) {
+      if (twJsonObj.getAsJsonObject().has("id")) {
+        return twJsonObj.getAsJsonObject().get("id").getAsString();
+      }
+    } else {
+      LOGGER.warn(jsonStr + " Is not a json string" + twJsonObj);
     }
+
     return null;
   }
 
@@ -45,24 +48,19 @@ public class TweetConsumerVerticle extends AbstractVerticle {
     while (true) {
       try {
         BulkRequest bulkRequest = new BulkRequest();
-        AtomicInteger recordCount = new AtomicInteger();
-        ConsumerRecords<String, String> consumerRecords = consumer.poll(Duration.ofMillis(100));
-        consumerRecords
-            .forEach(p -> {
-                  String jString = p.value();
-                  try {
-                    IndexRequest indexRequest = new IndexRequest()
-                        .id(getTweetId(p.value()))
-                        .index(tweetySetting.getIndice())
-                        .source(Json.decodeValue(jString), XContentType.JSON);
-                    bulkRequest.add(indexRequest);
-                    recordCount.getAndIncrement();
-                  } catch (Exception anyEx) {
-                    LOGGER.warn("errror while processing " + jString, anyEx);
-                  }
-                }
-            );
-        if (recordCount.get() > 0) {
+        consumer.poll(Duration.ofMillis(100)).forEach(p -> {
+              String jString = p.value();
+              try {
+                bulkRequest.add(new IndexRequest()
+                    .id(getTweetId(p.value()))
+                    .index(tweetySetting.getIndice())
+                    .source(jString, XContentType.JSON));
+              } catch (Exception anyEx) {
+                LOGGER.warn("error while processing " + jString, anyEx);
+              }
+            }
+        );
+        if (bulkRequest.numberOfActions() > 0) {
           BulkResponse bulkItemResponses = restHighLevelClient
               .bulk(bulkRequest, org.elasticsearch.client.RequestOptions.DEFAULT);
           consumer.commitSync();
@@ -79,8 +77,6 @@ public class TweetConsumerVerticle extends AbstractVerticle {
       }
 
     }
-    //}).start();
-
   }
 
   static KafkaConsumer<String, String> kafkaConsumerBuilder(TweetySetting tweetySetting) {
