@@ -1,6 +1,7 @@
 package com.samutup.kafka.consumer;
 
 import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.samutup.kafka.settings.TweetySetting;
 import io.vertx.core.AbstractVerticle;
@@ -15,17 +16,30 @@ import java.util.stream.Collectors;
 import org.apache.http.HttpHost;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
-import org.elasticsearch.action.bulk.BulkItemResponse;
 import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.bulk.BulkResponse;
 import org.elasticsearch.action.index.IndexRequest;
+import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestClient;
 import org.elasticsearch.client.RestClientBuilder;
 import org.elasticsearch.client.RestHighLevelClient;
+import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.common.xcontent.XContentType;
 
 public class TweetConsumerVerticle extends AbstractVerticle {
 
+  private static String getTweetPayload(JsonObject jsonObject) {
+    JsonObject payload = new JsonObject();
+    payload.add("id_str", jsonObject.get("id_str"));
+    payload.add("text", jsonObject.get("text"));
+    JsonObject userPayload = new JsonObject();
+    JsonObject originalUserJson = jsonObject.get("user").getAsJsonObject();
+    userPayload.add("name", originalUserJson.get("name"));
+    userPayload.add("followers_count", originalUserJson.get("followers_count"));
+    payload.add("user", userPayload);
+    return payload.toString();
+
+  }
 
   private static String getTweetId(String jsonStr) {
     JsonElement twJsonObj = JsonParser.parseString(jsonStr);
@@ -48,11 +62,14 @@ public class TweetConsumerVerticle extends AbstractVerticle {
     while (true) {
       try {
         BulkRequest bulkRequest = new BulkRequest();
+        bulkRequest.timeout(TimeValue.timeValueMinutes(2));
+
         consumer.poll(Duration.ofMillis(100)).forEach(p -> {
-              String jString = p.value();
+              JsonObject jsonObject = JsonParser.parseString(p.value()).getAsJsonObject();
+              String jString = getTweetPayload(jsonObject);
               try {
                 bulkRequest.add(new IndexRequest()
-                    .id(getTweetId(p.value()))
+                    .id(jsonObject.get("id_str").getAsString())
                     .index(tweetySetting.getIndice())
                     .type(tweetySetting.getIndiceType())
                     .source(jString, XContentType.JSON));
@@ -63,14 +80,27 @@ public class TweetConsumerVerticle extends AbstractVerticle {
         );
         if (bulkRequest.numberOfActions() > 0) {
           BulkResponse bulkItemResponses = restHighLevelClient
-              .bulk(bulkRequest, org.elasticsearch.client.RequestOptions.DEFAULT);
-          consumer.commitSync();
+              .bulk(bulkRequest, RequestOptions.DEFAULT);
+          if (!bulkItemResponses.hasFailures()) {
+            consumer.commitSync();
+
+            LOGGER.info(
+                "Successfully processed tweets with ID:" + Arrays
+                    .stream(bulkItemResponses.getItems())
+                    .map(
+                        it -> it.getIndex()
+                            .concat(it.getType()).concat("/")
+                            .concat(it.getId()))
+                    .collect(Collectors.joining(",")));
+          } else {
+            LOGGER.error(
+                "failed" + Arrays
+                    .stream(bulkItemResponses.getItems())
+                    .map(
+                        it -> it.getFailureMessage() + "" + it.status())
+                    .collect(Collectors.joining(",")));
+          }
           Thread.sleep(1000l);
-          LOGGER.info(
-              "Successfully processed tweets with ID:" + Arrays.stream(bulkItemResponses.getItems())
-                  .map(
-                      it -> it.getIndex().concat(it.getType()).concat("/").concat(it.getId()))
-                  .collect(Collectors.joining(",")));
         }
 
       } catch (Exception ioException) {
