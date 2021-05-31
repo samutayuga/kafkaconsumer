@@ -24,7 +24,7 @@ apps:
   consumer_group: tweet_squad
   elastic_host: elasticsearch-master
   elastic_port: 9200
-  indice: /tweet-kafka
-  indice_type: /tweets
+  indice: tweet-kafka
+  indice_type: tweets
   rest_consume: /consume
 image: samutup/kafka-twitter-consumer:1.0.0

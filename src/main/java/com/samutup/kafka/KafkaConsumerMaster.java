@@ -1,6 +1,7 @@
 package com.samutup.kafka;
 
 import com.samutup.kafka.consumer.KafkaConsumerVerticle;
+import com.samutup.kafka.consumer.PopularTweetVerticle;
 import com.samutup.kafka.settings.SettingLoader;
 import io.netty.util.internal.logging.InternalLoggerFactory;
 import io.netty.util.internal.logging.Log4J2LoggerFactory;
@@ -29,6 +30,7 @@ public class KafkaConsumerMaster {
       if (event.succeeded()) {
         //deploy verticle
         deploy(vertx, event.result(), KafkaConsumerVerticle.class.getName(), false);
+        deploy(vertx, event.result(), PopularTweetVerticle.class.getName(), true);
 
       } else {
         //deploy verticle

@@ -15,6 +15,7 @@ public class TweetySetting {
 
   private int port;
   private String topicName;
+  private String topicTarget;
   private String brokerHost;
   private String brokerPort;
   private String consumerGroup;
@@ -95,6 +96,14 @@ public class TweetySetting {
     this.indiceType = indiceType;
   }
 
+  public String getTopicTarget() {
+    return topicTarget;
+  }
+
+  public void setTopicTarget(String topicTarget) {
+    this.topicTarget = topicTarget;
+  }
+
   @Override
   public boolean equals(Object o) {
     if (this == o) {
@@ -106,6 +115,7 @@ public class TweetySetting {
     TweetySetting that = (TweetySetting) o;
     return port == that.port && elasticPort == that.elasticPort && Objects
         .equal(topicName, that.topicName) && Objects
+        .equal(topicTarget, that.topicTarget) && Objects
         .equal(brokerHost, that.brokerHost) && Objects
         .equal(brokerPort, that.brokerPort) && Objects
         .equal(consumerGroup, that.consumerGroup) && Objects
@@ -117,8 +127,8 @@ public class TweetySetting {
   @Override
   public int hashCode() {
     return Objects
-        .hashCode(port, topicName, brokerHost, brokerPort, consumerGroup, elasticHost, elasticPort,
-            indice, indiceType);
+        .hashCode(port, topicName, topicTarget, brokerHost, brokerPort, consumerGroup, elasticHost,
+            elasticPort, indice, indiceType);
   }
 
   @Override
@@ -126,6 +136,7 @@ public class TweetySetting {
     return MoreObjects.toStringHelper(this)
         .add("port", port)
         .add("topicName", topicName)
+        .add("topicTarget", topicTarget)
         .add("brokerHost", brokerHost)
         .add("brokerPort", brokerPort)
         .add("consumerGroup", consumerGroup)

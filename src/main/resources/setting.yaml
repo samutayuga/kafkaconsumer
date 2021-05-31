@@ -2,9 +2,10 @@ port: 8001
 broker_host: kafka-broker
 broker_port: 9092
 topic_name: tweety
+topic_target: popular_tweet
 consumer_group: tweet_squad
 elastic_host: elasticsearch-master
 elastic_port: 9200
-indice: /tweet-kafka
-indice_type: /tweets
+indice: tweet-kafka
+indice_type: tweets
 rest_consume: /consume

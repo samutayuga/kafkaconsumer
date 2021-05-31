@@ -26,7 +26,7 @@
     <logback-version>1.2.3</logback-version>
     <elastic-search.version>7.13.0</elastic-search.version>
     <apache-http-client.version>4.5.13</apache-http-client.version>
-    <kafka-client.version>2.6.0</kafka-client.version>
+    <kafka-streams.version>2.0.0</kafka-streams.version>
     <json-path.version>2.5.0</json-path.version>
     <google-json.version>2.8.7</google-json.version>
     <launcher.class>com.samutup.kafka.KafkaConsumerMaster</launcher.class>
@@ -98,11 +98,6 @@
         <version>${log4j-version}</version>
       </dependency>
       <dependency>
-        <groupId>io.vertx</groupId>
-        <artifactId>vertx-kafka-client</artifactId>
-        <version>${vertx.version}</version>
-      </dependency>
-      <dependency>
         <groupId>org.apache.httpcomponents</groupId>
         <artifactId>httpclient</artifactId>
         <version>${apache-http-client.version}</version>
@@ -119,8 +114,8 @@
       </dependency>
       <dependency>
         <groupId>org.apache.kafka</groupId>
-        <artifactId>kafka-clients</artifactId>
-        <version>${kafka-client.version}</version>
+        <artifactId>kafka-streams</artifactId>
+        <version>${kafka-streams.version}</version>
       </dependency>
     </dependencies>
 
@@ -130,10 +125,6 @@
     <dependency>
       <groupId>io.vertx</groupId>
       <artifactId>vertx-core</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>io.vertx</groupId>
-      <artifactId>vertx-kafka-client</artifactId>
     </dependency>
     <dependency>
       <groupId>com.twitter</groupId>
@@ -198,7 +189,7 @@
     </dependency>
     <dependency>
       <groupId>org.apache.kafka</groupId>
-      <artifactId>kafka-clients</artifactId>
+      <artifactId>kafka-streams</artifactId>
     </dependency>
     <dependency>
       <groupId>org.junit.jupiter</groupId>

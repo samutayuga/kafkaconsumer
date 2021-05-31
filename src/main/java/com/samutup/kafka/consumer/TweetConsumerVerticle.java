@@ -1,6 +1,5 @@
 package com.samutup.kafka.consumer;
 
-import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.samutup.kafka.settings.TweetySetting;
@@ -41,20 +40,8 @@ public class TweetConsumerVerticle extends AbstractVerticle {
 
   }
 
-  private static String getTweetId(String jsonStr) {
-    JsonElement twJsonObj = JsonParser.parseString(jsonStr);
-    if (twJsonObj.isJsonObject()) {
-      if (twJsonObj.getAsJsonObject().has("id_str")) {
-        return twJsonObj.getAsJsonObject().get("id_str").getAsString();
-      }
-    } else {
-      LOGGER.warn(jsonStr + " Is not a json string" + twJsonObj);
-    }
-
-    return null;
-  }
-
   private static final Logger LOGGER = LoggerFactory.getLogger(TweetConsumerVerticle.class);
+
 
   private static void consumeTopic(RestHighLevelClient restHighLevelClient,
       KafkaConsumer<String, String> consumer, TweetySetting tweetySetting) {
